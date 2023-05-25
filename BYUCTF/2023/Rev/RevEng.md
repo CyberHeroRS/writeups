@@ -36,7 +36,7 @@ Attachment: gettingBetter
     }
 ```
 
-<p> What this does is simply subtract 5 from the ascii value of each character. We can easily do this ourselves with some simple python code. Note that chars are read right-to-left. The other string we found clearly wasn't the flag, so the following is the code I used to get the flag: </p>
+<p> What this does is simply subtract 5 from the ascii value of each character. We can easily do this ourselves with some simple python code. Note that chars are read right-to-left. I clearly forgot about the other string so the following is the code I used to get the flag: </p>
 
 ```py
 a = [0]*5 #the following are just strings that i found in ghidra
@@ -52,3 +52,17 @@ print("".join([chr(ord(c)-5) for c in s]))
 <p> The flag is the following </p>
 
 > byuctf{i_G0t_3etTeR!_1975}
+
+<p> A more optimal way to solve the challenge is to use a similar code to put the string we found using 'strings' command </p>
+
+```py
+print("".join([chr(ord(c)-5) for c in "Xmj%yzwsji%rj%nsyt%f%sj|y"]))
+```
+
+<p> This returns the following string: </p>
+
+>She turned me into a newt
+
+<p> Which when put as an input to the program also gives the flag... A much simpler way to do it. </p>
+
+
