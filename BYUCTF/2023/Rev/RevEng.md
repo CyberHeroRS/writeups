@@ -20,7 +20,6 @@ Attachment: gettingBetter
     decrypt_passphrase(&local_108,local_178,5);
     print_flag(local_178);]
 ```
-
 <p> It seems like a string we could use as it's passed to a function decrypt_passphrase as an argument. After taking a look at the function and changing some variable names, we come to see the following code: </p>
 
 ```c
@@ -37,7 +36,7 @@ Attachment: gettingBetter
     }
 ```
 
-<p> What this does is simply subtract 5 from the ascii value of each character. We can easily do this ourselves with some simple python code. Note that chars are read right-to-left. The following is the code I used to get the flag: </p>
+<p> What this does is simply subtract 5 from the ascii value of each character. We can easily do this ourselves with some simple python code. Note that chars are read right-to-left. The other string we found clearly wasn't the flag, so the following is the code I used to get the flag: </p>
 
 ```py
 a = [0]*5 #the following are just strings that i found in ghidra
