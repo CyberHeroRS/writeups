@@ -1,11 +1,12 @@
 # Prompt
+Author: lambdanuu
 
 >See if you can find the flag!
 
 Attachment: gettingBetter
 
 # Solution
-<p> As usual, the first thing to do is see if there's anything intersting using the 'strings' command and the only interesting thing seemed to be the following string </p>
+<p> As usual, the first thing to do is see if there's anything interesting using the 'strings' command and the only interesting thing seemed to be the following string </p>
 
 >Xmj%yzwsji%rj%nsyt%f%sj|y
 
