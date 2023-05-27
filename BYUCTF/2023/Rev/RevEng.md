@@ -28,13 +28,13 @@ Attachment: gettingBetter
     void decrypt_passphrase(long in_str,long out_str,char int_5)
 
     {
-    int i;
-    
-    for (i = 0; *(char *)(in_str + i) != '\0'; i = i + 1) {
-        *(char *)(out_str + i) = *(char *)(in_str + i) - int_5;
-    }
-    *(undefined *)(out_str + i) = 0;
-    return;
+        int i;
+
+        for (i = 0; *(char *)(in_str + i) != '\0'; i = i + 1) {
+            *(char *)(out_str + i) = *(char *)(in_str + i) - int_5;
+        }
+        *(undefined *)(out_str + i) = 0;
+        return;
     }
 ```
 
