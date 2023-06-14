@@ -101,7 +101,7 @@ Parts of [Template.compile](https://github.com/mde/ejs/blob/main/lib/ejs.js#L441
 // github repo: mde/ejs
 // lib/ejs.js
 
-Template.protorype={
+Template.prototype={
     //...
     compile = function() {
 	//...
