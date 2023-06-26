@@ -18,7 +18,6 @@ Besides the text we are just presented with a host ip address and port.
 
 When using [Netcat](https://netcat.sourceforge.net/) to connect to the host we get the following response:
 
-Inline-style:
 ![alt text](./response.png "Response from server when connecting with Netcat")
 
 After looking into the network traffic in [Wireshark](https://netcat.sourceforge.net/) i noticed that the magic bytes never change and then i went on to do some research. That is when i found that there is a protocol called [NBD](https://github.com/NetworkBlockDevice/nbd/blob/master/doc/proto.md) which stands for `Network Block Device` and is used for sharing storage mediums over networks. So I figured that this is the protocol the server is using.
@@ -27,7 +26,7 @@ After looking into the network traffic in [Wireshark](https://netcat.sourceforge
 
 Luckly there is a tool that can be used to connect to NBD servers called `nbd-client` but when I tryed to connect to the challenge server i got the following message: `warning the oldstyle protocol is no longer supported`. After doing a bit more research on the NBD github i figured out that NBD protocol has a new version of handshake which has been implemented in version 3.10 of the package.
 
-In order to connect to the server I needed an older version which i found at the [NBD Surceforge](https://sourceforge.net/projects/nbd/files/nbd/). After downloading and installing an older version of the package i was finnally able to connect to the server using following command:
+In order to connect to the server I needed an older version which i found at the [NBD Surceforge](https://sourceforge.net/projects/nbd/files/nbd/). After downloading and installing an older version of the package i was finally able to connect to the server using following command:
 ```
 sudo nbd-client challenge.nahamcon.com 30434 /dev/nbd0
 ```
