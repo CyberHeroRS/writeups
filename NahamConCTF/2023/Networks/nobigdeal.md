@@ -20,18 +20,18 @@ When using [Netcat](https://netcat.sourceforge.net/) to connect to the host we g
 
 ![alt text](./response.png "Response from server when connecting with Netcat")
 
-After looking into the network traffic in [Wireshark](https://netcat.sourceforge.net/) i noticed that the magic bytes never change and then i went on to do some research. That is when i found that there is a protocol called [NBD](https://github.com/NetworkBlockDevice/nbd/blob/master/doc/proto.md) which stands for `Network Block Device` and is used for sharing storage mediums over networks. So I figured that this is the protocol the server is using.
+After looking into the network traffic in [Wireshark](https://netcat.sourceforge.net/) I noticed that the magic bytes never change and then I went on to do some research. That is when I found that there is a protocol called [NBD](https://github.com/NetworkBlockDevice/nbd/blob/master/doc/proto.md) which stands for `Network Block Device` and is used for sharing storage mediums over networks. So I figured that this is the protocol the server is using.
 
 #### Solving the challenge
 
-Luckly there is a tool that can be used to connect to NBD servers called `nbd-client` but when I tryed to connect to the challenge server i got the following message: `warning the oldstyle protocol is no longer supported`. After doing a bit more research on the NBD github i figured out that NBD protocol has a new version of handshake which has been implemented in version 3.10 of the package.
+Luckly there is a tool that can be used to connect to NBD servers called `nbd-client` but when I tryed to connect to the challenge server I got the following message: `warning the oldstyle protocol is no longer supported`. After doing a bit more research on the NBD github I figured out that NBD protocol has a new version of handshake which has been implemented in version 3.10 of the package.
 
-In order to connect to the server I needed an older version which i found at the [NBD Surceforge](https://sourceforge.net/projects/nbd/files/nbd/). After downloading and installing an older version of the package i was finally able to connect to the server using following command:
+In order to connect to the server I needed an older version which I found at the [NBD Surceforge](https://sourceforge.net/projects/nbd/files/nbd/). After downloading and installing an older version of the package I was finally able to connect to the server using following command:
 ```
 sudo nbd-client challenge.nahamcon.com 30434 /dev/nbd0
 ```
 
-It executed without errors this time, but when i tried to mount the shared volume i got another error:
+It executed without errors this time, but when I tried to mount the shared volume I got another error:
 ```
 /mnt is not a block device.
 ```
@@ -69,7 +69,7 @@ Obviously this is a PNG image, and at this point there are two solutions to this
 
 ##### In terminal solution
 
-After seeing that the file in question is a PNG image i opened it and saw that it was a QR code. To get the solution we can just use zbarimg:
+After seeing that the file in question is a PNG image I opened it and saw that it was a QR code. To get the solution we can just use zbarimg:
 
 ```
 zbarimg /dev/nbd0
@@ -79,7 +79,7 @@ QR-Code:flag{181638ce1336f4b274c2646b92b60e4e}
 
 ##### Cyberchef solution
 
-After getting the hexdump of the file we can use [Cyberchef](https://gchq.github.io/CyberChef/) to get the flag from the image. This is the solution I found first since i wasn't sure if the PNG in question was a QR code or something else. I used the following recipe:
+After getting the hexdump of the file we can use [Cyberchef](https://gchq.github.io/CyberChef/) to get the flag from the image. This is the solution I found first since I wasn't sure if the PNG in question was a QR code or something else. I used the following recipe:
 
 ![alt text](./solution.png "Getting the flag by using Cyberchef")
 
