@@ -52,5 +52,5 @@ This told me that there is some kind of authentication here. When I tried decodi
 
 At this point it is easy to realize that this binary sends a post request to the site with a specific cookie value. The first idea I had was that the cookie value was one of the base64 strings mentioned earlier so I set one of the base64 strings as a cookie named `access_token` and accessed `typhoonconctf-2023-dumb-internet-of-things.chals.io/sensordata` where I found the flag:
 
-![alt text](./flag.png "Flag on the site after authenticating successfully")
+![alt text](./flagsite.png "Flag on the site after authenticating successfully")
 
