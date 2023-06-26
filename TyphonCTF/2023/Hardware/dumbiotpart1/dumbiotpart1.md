@@ -50,7 +50,7 @@ This told me that there is some kind of authentication here. When I tried decodi
   local_cf0 =  "POST /sensordata HTTP/1.1\r\nHost: %s\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nCookie: access_token=%s\r\n\r\n%s"
 ```
 
-At this point it is easy to realize that this binary sends a post request to the site with a specific cookie value. My first hunch was that the cookie value was one of the base64 strings mentioned earlier so I set one of the base64 strings as a cookie named `access_token` and accessed `typhoonconctf-2023-dumb-internet-of-things.chals.io/sensordata` where I found the flag:
+At this point it is easy to realize that this binary sends a post request to the site with a specific cookie value. The first idea I had was that the cookie value was one of the base64 strings mentioned earlier so I set one of the base64 strings as a cookie named `access_token` and accessed `typhoonconctf-2023-dumb-internet-of-things.chals.io/sensordata` where I found the flag:
 
 ![alt text](./flag.png "Flag on the site after authenticating successfully")
 
