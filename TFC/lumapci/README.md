@@ -292,7 +292,7 @@ We managed to solve this by creating a block of bytes **(64 byte aligned)**, add
 
 Overall what this means is that we can layout our code as VM instruction block, copy of the same instruction block and then our "magic blob".
 
-![Blob](image.png)
+![Blob](blob.png)
 
 ## VM Exploitation
 
@@ -453,4 +453,9 @@ And in the end we transfered out driver and cli tool and we got the flag ```TFCC
 ![Flag](flag.png)
 
 ## Post Mortem
-Thanks TFC for awesome challenge for another year. this challenge involved a four team members of CyberHero. We would love to see more challenges like these in next CTF.
+Thanks TFC for awesome challenge for another year. this challenge involved a four members team of CyberHero, and multiple hours of pain. We would love to see more challenges like these in next CTF.
+
+
+Unfortunately this time we finished fourth. Altrough we did all rev/pwn/crypto/forensics (rip misc)
+
+![challenges](challenges.png)
