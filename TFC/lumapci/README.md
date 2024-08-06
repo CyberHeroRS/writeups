@@ -110,6 +110,10 @@ static uint64_t edu_mmio_read(void *opaque, hwaddr addr, unsigned size)
 
 We can see that that the luma implementation has much less addr cases `0x50-0xcf`, `0x120` and `0x140`.
 
+* `0x50-0xcf` Is reading registers
+* `0x120` is reading 8 bytes from firmware write pointer
+* `0x140` is validating signature
+
 We also have this object at variable `rax` that in edu implementation is called `EduState`.
 
 After some searching of types in Binary Ninja `Types` view, we notice a type named `LumaState`.
@@ -125,7 +129,13 @@ When we change type of rax to `struct LumaState*` we can see that it perfectly m
 
 Similarly, to read we can map our object to `struct LumaState*`.
 
-And again we see some special addr cases that are not present in edu implementation: `0x50-0xcf`, `0xd8-0x117`, `0x120` and `0x138`.
+And again we see some special addr cases that are not present in edu implementation: `0x50-0xcf`, `0xd8-0x117`, `0x120`, `0x128` and `0x138`.
+
+* `0x50-0xcf` is setting registers
+* `0xd8-0x117` is writing 8 bytes into firmware write pointer
+* `0x120` is setting firmware write pointer
+* `0x128` is validating signature and executing vm
+* `0x138` is reseting firmware state and setting its length
 
 ## VM
 
