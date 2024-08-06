@@ -240,6 +240,102 @@ To reiterate, we need to:
 
 ## Communicating with qemu
 
+Searching online we found driver for edu device that you can use this as a base (https://github.com/maxerenberg/qemu-edu-driver).
+
+We had to modified PCI_DEVICE_ID to our new id 1337. We had to remove irq_handler because it was crashing our linux kernel. Additionally we wrote read/write that used 8byte readq/writeq instead of readl/writel that driver used because device only suppors 8 byte read/writes.
+
+To build driver we had to clone linux
+```
+git clone --depth=1 --branch=v6.10 https://github.com/torvalds/linux.git linux
+cd linux
+make defconfig
+make
+git clone https://github.com/maxerenberg/qemu-edu-driver module
+```
+We will later need to build module with kernel in docker (author purposely left image so that linux will be 6.10.0-dirty) so you can not load driver if it does not match kernel name/build environment.
+![dirty](dirty.png)
+
+After you build module and kernel you can boot into it:
+on our system we had to add:
+```
+./qemu-system-x86_64 \
+    -L /usr/share/qemu/ \
+```
+
+### Doing everything in userland
+Fun fact that we learned after the competition ended by user @raindropbreeze from TFC discord is that writing driver was not necessary at all. Since we only did I/O operations on memory we could simply mmap pci memory and operate on it. This would save us couple of hours just rebuilding kernel and thinkering with the driver.
+
+```c
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
+
+static inline void barrier() {
+    __asm__ volatile (
+        ""
+        :::"memory"
+    );
+}
+
+static uint64_t volatile* mmio_base;
+
+static void init() {
+    int mmio_fd = open("/sys/bus/pci/devices/0000:00:03.0/resource0", O_SYNC|O_RDWR);
+    mmio_base = (uint64_t*) mmap(0, 0x200, PROT_READ|PROT_WRITE, MAP_SHARED, mmio_fd, 0);
+
+    if (mmio_base == MAP_FAILED) {
+        perror("wtf where the hell is our luma");
+        exit(1);
+    }
+
+    printf("mmio mmap'ped: %p\n", mmio_base);
+    barrier();
+}
+
+static void mmio_write(int offset, uint64_t val) {
+    assert(offset % 8 == 0);
+    mmio_base[offset / 8] = val;
+}
+
+static uint64_t mmio_read(int offset) {
+    assert(offset % 8 == 0);
+    return mmio_base[offset / 8];
+}
+
+#define FW_FLUSH_POS_OFF 0x120
+static void set_fw_flush_pos(uint64_t pos) {
+    mmio_write(FW_FLUSH_POS_OFF, pos);
+}
+
+static uint64_t get_fw_flush_pos() {
+    return mmio_read(FW_FLUSH_POS_OFF);
+}
+
+#define FW_LEN_OFF 0x138
+static void set_fw_len(uint64_t len) {
+    mmio_write(FW_LEN_OFF, len);
+}
+
+#define VAL_SIG_OFF 0x140
+static int validate_sig() {
+    return (int) mmio_read(VAL_SIG_OFF);
+}
+
+int main() {
+    init();
+    
+    printf("%d\n", validate_sig());
+
+
+    return 0;
+}
+```
+
+
 ## Bypassing validate_signature
 
 This obstacle is what got most teams stuck.
