@@ -1,36 +1,36 @@
 # Lumapci
 
-* Author: `Livian`
-* Description:
+- Author: `Livian`
+- Description:
+
 ```
 Luma failed maths so I made him a PCI card that will help him do some calculations. Don't think you can exploit it because it only runs my signed firmware :3.
 ```
-Files: [lumapci.zip](./lumapci.zip)
 
+Files: [lumapci.zip](./lumapci.zip)
 
 ## Overview
 
 ![File structure](file_structure.png)
 
-From provided docker file, and entrpyoint script we can see that our docker runs linux kernel and file system compiled by `qemu_builder` profile in `Challenge.dockerfile` with precompiled qemu binary and that flag is stored in docker's file system. This would mean this challenge requires us to do QEMU escape.
+From the provided docker file and entrypoint script, we can see that our docker runs the linux kernel and file system compiled by `qemu_builder` profile in `Challenge.dockerfile` with precompiled qemu binary. The flag is stored in docker's file system. This would mean this challenge requires us to do QEMU escape.
 
 ![Dockerfile](docker.png)
 ![entrypoint.sh](entrypoint.png)
 
-
 ## qemu-system-x86_64
 
-After we oppened qemu-system-x86_64 in binary ninja we notice that there are multiple functions with with `luma` keyword 
+After we opened qemu-system-x86_64 in Binary Ninja we notice that there are multiple functions with `luma` keyword.
 
 ![QEMU Functions](qemu_functions.png)
 
 ### Init
 
-From function `luma_class_init` we can see that pci-device is registered
+From the function `luma_class_init`, we can see that `pci-device` is registered.
 
 ![luma_class_init](luma_class_init.png)
 
-After some research we figured out that this function closely resembles qemus [edu device](https://github.com/qemu/qemu/blob/master/hw/misc/edu.c) 
+After some research we figured out that this function closely resembles QEMU's [edu device](https://github.com/qemu/qemu/blob/master/hw/misc/edu.c)
 
 ```c
 static void edu_class_init(ObjectClass *class, void *data)
@@ -47,7 +47,8 @@ static void edu_class_init(ObjectClass *class, void *data)
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
 }
 ```
-With this information we can change types on `rax` and `rax_1` with binary ninja `Change Type` feature to make this function much more  readable. And now we can notice that only `device_id` differs from default edu implementation.
+
+With this information we can change the types on `rax` and `rax_1` with Binary Ninja's `Change Type` feature to make this function much more readable. Now we can notice that only `device_id` differs from the default edu implementation.
 
 ![luma_class_init_renamed](luma_class_init_renamed.png)
 
@@ -55,7 +56,7 @@ With this information we can change types on `rax` and `rax_1` with binary ninja
 
 ![luma_mmio_read](luma_mmio_read.png)
 
-Continuing with analysis on `luma_mmio_read` function, in similar fashion we can compare with edu implementation.
+Continuing with our analysis on `luma_mmio_read` function, in similar fashion we can compare with the edu implementation.
 
 ```c
 static uint64_t edu_mmio_read(void *opaque, hwaddr addr, unsigned size)
@@ -107,14 +108,14 @@ static uint64_t edu_mmio_read(void *opaque, hwaddr addr, unsigned size)
 }
 ```
 
-We can see that that luma implementation has much less addr cases `0x50-0xcf`, `0x120` and `0x140`.
+We can see that that the luma implementation has much less addr cases `0x50-0xcf`, `0x120` and `0x140`.
 
-Also we have this object at variable `rax` that in edu implementation is called `EduState`. 
+We also have this object at variable `rax` that in edu implementation is called `EduState`.
 
-After some searching of types in Binary Ninja `Types` view we notice type named `LumaState`
+After some searching of types in Binary Ninja `Types` view, we notice a type named `LumaState`.
 ![LumaState](LumaState.png)
 
-When we change type of rax to `struct LumaState*` we can see that it perfectly matches and gives us meaningful decompile
+When we change type of rax to `struct LumaState*` we can see that it perfectly matches and gives us meaningful decompilation.
 
 ![luma_mmio_read_renamed](luma_mmio_read_renamed.png)
 
@@ -122,17 +123,17 @@ When we change type of rax to `struct LumaState*` we can see that it perfectly m
 
 ![luma_mmio_write](luma_mmio_write.png)
 
-Similarly to read we can map our object to `struct LumaState*`
+Similarly, to read we can map our object to `struct LumaState*`.
 
-And again we se some special addr cases that are not present in edu implementation: `0x50-0xcf`, `0xd8-0x117`, `0x120` and `0x138`.
+And again we see some special addr cases that are not present in edu implementation: `0x50-0xcf`, `0xd8-0x117`, `0x120` and `0x138`.
 
 ## VM
 
-Another interesting function here is `vm_execute` that is called on `LumaState` object. Similar to many `vm` challenges there is big switch case with handlers for executing vm instructions
+Another interesting function here is `vm_execute` that is called on `LumaState` object. Similar to many `vm` challenges there is a big switch case with handlers for executing vm instructions.
 
 ![VM](vm.png)
 
-After some analysis we can see that instruction is encoded in short int (2 bytes) with 4 nibbles in order `opcode`, `register1`, `register2`, `constant`
+After some analysis we can see that each instruction is encoded in short int (2 bytes) with 4 nibbles in order: `opcode`, `register1`, `register2`, `constant`.
 
 ```rust
 pub fn instr(opcode: u8, reg1: u8, reg2: u8, cnst: u8) -> u16 {
@@ -140,7 +141,7 @@ pub fn instr(opcode: u8, reg1: u8, reg2: u8, cnst: u8) -> u16 {
 }
 ```
 
- And we can map opcodes like this: 
+And we can map opcodes like this:
 
 ```rust
 //exit
@@ -179,13 +180,13 @@ const opc_nop: u8 = 0xF;
 
 ### Validate signature
 
-There is function called `validate_signature` that is called before vm_execute
+There is a function called `validate_signature` that is called before vm_execute
 
 ![validate_signature](validate_signature.png)
 
-What this function does is split code into chunks of 64 bytes, sha512 those hases , xors those hashes into one `checksum` and compars checksum with constant values
+What this function does is split code into chunks of 64 bytes, performs sha512 on those chunks and xors those hashes into one `checksum` and finally compares the checksum with constant values.
 
-This would be rust equivalent
+This would be rust equivalent:
 
 ```rust
 use sha2_const::Sha512;
@@ -215,28 +216,31 @@ fn validate_signature(data: &[u8]) -> bool {
 ```
 
 ### Win Function
-Author of this challenge was nice enough to add win function.
+
+The author of this challenge was nice enough to add a win function:
 ![luma_math_hacks](luma_math_hacks.png)
 
-## Overview 
+## Overview
 
 To reiterate, we need to:
-* Create driver to communicate with luma_qemu_device
-* Bypass validate_signature
-* Create VM code to exploit luma_device
+
+- Create a driver to communicate with `luma_qemu_device`
+- Bypass `validate_signature`
+- Create VM code to exploit luma_device
 
 ## Communicating with qemu
 
 ## Bypassing validate_signature
 
-This obsticle is what got most teams stuck.
+This obstacle is what got most teams stuck.
 
 ### Creating valid signature
-Since checksum was generated by xoring multiple sha512 hashes, what we could do is generate large number of random hashes, and try to find combination of hashes that wen xored gives us target checksum.
 
-How we could achive this we could think of sha512 of polynome of order 64 and we can try to solve linear equation to get hashes that when xored give required checksum.
+Since `checksum` was generated by xoring multiple sha512 hashes, what we could do is generate a large number of random hashes and try to find a combination of hashes such that when xored, we get the target checksum.
 
-We did this by creating matrix of random hashes and used SageMath's `solve_right` function to solve linear equation
+We could achieve this by thinking of sha512 as polynome of order 64 and try to solve this linear equation to get hashes that when xored together give us the required checksum.
+
+We did this by creating a matrix of random hashes and used SageMath's `solve_right` function to solve the linear equation.
 
 ```py
 from sage.all import *
@@ -280,48 +284,51 @@ if input("> ").lower() == "y":
     print(payload.hex())
 ```
 
-### Vreating valid VM code
+### Creating valid VM code
 
-Now that we have valid magic blob of bytes that passes `validate_signature` we need to add vm instructions somehow. 
+Now that we have a valid "magic blob" of bytes that passes `validate_signature`, we need to add vm instructions.
 
-We managed to solve this by creating block of bytes __(where length is 64 bytes aligned)__, adding our exploit instructions there, and than duplicating this block. What this means is that both blocks would have same hash, meaning when those 2 hashes are xored are nulled meaning that it would not affect checksum at all. 
+We managed to solve this by creating a block of bytes **(64 byte aligned)**, adding our exploit instructions there and then duplicating it. What this means is that both blocks would have the same hash, resulting in a 0 after they are xored together and ultimately not affecting the checksum at all.
 
-Overall what this means is we can layout our code as VM instruction block, Copy of same instruction block and than our magic blob. 
+Overall what this means is that we can layout our code as VM instruction block, copy of the same instruction block and then our "magic blob".
 
 ![Blob](image.png)
 
 ## VM Exploitation
 
-Finally we get to PWN part of this challenge.
-If we check our analysis of ```vm_execute``` instruction we can see that we have arbitrary read and arbitrary write from our copy of LumaState.firmware bytes on stack. This means we can read and modify return pointer of vm_execute and redirect it to our win function ```luma_math_hacks```
+Finally we get to the PWN part of this challenge.
+If we check our analysis of `vm_execute`, we can see that we have arbitrary read and arbitrary write from our copy of `LumaState.firmware` bytes on stack. This means that we can read and modify the return pointer of `vm_execute` and redirect it to our win function `luma_math_hacks`.
 
 ### Exploit
 
-We stored vm 
+We stored vm
 
 we created 2 vm programs
-First shellcode is  
+First shellcode is
+
 ```
 opc_load r1, r0
 opc_ret
 ```
-we used 
+
+we used
 `pciwrite(0x50, 0x100000 + 0x28)` we set register 0 to return pointer offset
 and called pciwrite(0x128, 1); to execute vm.
 
 Next we read register1 using pciread(0x58); to get return pointer leak.
 
 next vm program is to set return pointer to some ret instruction to allign stack and next rop is to win function
+
 ```
 opc_store r1, r0
 opc_store r3, r2
 opc_ret
 ```
-we just had to store register r1 to our chosen ret instruction and 
+
+we just had to store register r1 to our chosen ret instruction and
 r3 to win function addres generated from leaked function.
 
 Full code can be found at: [write_shellcode]()
-
 
 ```c
 #define SHELLCODE_LEN 128
@@ -369,8 +376,4 @@ void write_shellcode()
 }
 ```
 
-
-
 ### Final Exploit
-
-
