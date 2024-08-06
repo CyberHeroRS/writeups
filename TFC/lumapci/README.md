@@ -143,11 +143,11 @@ Another interesting function here is `vm_execute` that is called on `LumaState` 
 
 ![VM](./images/vm.png)
 
-After some analysis we can see that each instruction is encoded in short int (2 bytes) with 4 nibbles in order: `opcode`, `register1`, `register2`, `constant`.
+After some analysis we can see that each instruction is encoded in short int (2 bytes) with 4 nibbles in order: `opcode`, `operand1`, `operand2`, `constant`.
 
 ```rust
-pub fn instr(opcode: u8, reg1: u8, reg2: u8, cnst: u8) -> u16 {
-    (opcode as u16) << 12 | (reg1 as u16) << 8 | (reg2 as u16) << 4 | cnst as u16
+pub fn instr(opcode: u8, op1: u8, op2: u8, cnst: u8) -> u16 {
+    (opcode as u16) << 12 | (op1 as u16) << 8 | (op2 as u16) << 4 | cnst as u16
 }
 ```
 
@@ -187,6 +187,8 @@ const opc_dec: u8 = 0xE;
 //nop
 const opc_nop: u8 = 0xF;
 ```
+
+(There is a total of 16 registers)
 
 ### Validate signature
 
@@ -242,7 +244,7 @@ To reiterate, we need to:
 
 Searching online, we found a driver (https://github.com/maxerenberg/qemu-edu-driver) for the edu device, which we used as a starting point.
 
-We had to modify `PCI_DEVICE_ID` to our new id 1337. We had to remove `irq_handler` because it was crashing the kernel. Additionally, we wrote read/write that used 8-byte `readq`/`writeq` instead of `readl`/`writel` that the original driver used, because the device only supports 8-byte read/writes.
+We had to modify `PCI_DEVICE_ID` to our new id 0x1337. We had to remove `irq_handler` because it was crashing the kernel. Additionally, we wrote read/write that used 8-byte `readq`/`writeq` instead of `readl`/`writel` that the original driver used, because the device only supports 8-byte read/writes.
 
 To build the driver, we had to clone Linux:
 
