@@ -11,24 +11,24 @@ Files: [lumapci.zip](./lumapci.zip)
 
 ## Overview
 
-![File structure](file_structure.png)
+![File structure](./images/file_structure.png)
 
 From the provided docker file and entrypoint script, we can see that our docker runs the linux kernel and file system compiled by `qemu_builder` profile in `Challenge.dockerfile` with precompiled qemu binary. The flag is stored in docker's file system. This would mean this challenge requires us to do QEMU escape.
 
-![Dockerfile](docker.png)
-![entrypoint.sh](entrypoint.png)
+![Dockerfile](./images/docker.png)
+![entrypoint.sh](./images/entrypoint.png)
 
 ## qemu-system-x86_64
 
 After we opened qemu-system-x86_64 in Binary Ninja we notice that there are multiple functions with `luma` keyword.
 
-![QEMU Functions](qemu_functions.png)
+![QEMU Functions](./images/qemu_functions.png)
 
 ### Init
 
 From the function `luma_class_init`, we can see that `pci-device` is registered.
 
-![luma_class_init](luma_class_init.png)
+![luma_class_init](./images/luma_class_init.png)
 
 After some research we figured out that this function closely resembles QEMU's [edu device](https://github.com/qemu/qemu/blob/master/hw/misc/edu.c)
 
@@ -50,11 +50,11 @@ static void edu_class_init(ObjectClass *class, void *data)
 
 With this information we can change the types on `rax` and `rax_1` with Binary Ninja's `Change Type` feature to make this function much more readable. Now we can notice that only `device_id` differs from the default edu implementation.
 
-![luma_class_init_renamed](luma_class_init_renamed.png)
+![luma_class_init_renamed](./images/luma_class_init_renamed.png)
 
 ## Read
 
-![luma_mmio_read](luma_mmio_read.png)
+![luma_mmio_read](./images/luma_mmio_read.png)
 
 Continuing with our analysis on `luma_mmio_read` function, in similar fashion we can compare with the edu implementation.
 
@@ -117,15 +117,15 @@ We can see that that the luma implementation has much less addr cases `0x50-0xcf
 We also have this object at variable `rax` that in edu implementation is called `EduState`.
 
 After some searching of types in Binary Ninja `Types` view, we notice a type named `LumaState`.
-![LumaState](LumaState.png)
+![LumaState](./images/LumaState.png)
 
 When we change type of rax to `struct LumaState*` we can see that it perfectly matches and gives us meaningful decompilation.
 
-![luma_mmio_read_renamed](luma_mmio_read_renamed.png)
+![luma_mmio_read_renamed](./images/luma_mmio_read_renamed.png)
 
 ## Write
 
-![luma_mmio_write](luma_mmio_write.png)
+![luma_mmio_write](./images/luma_mmio_write.png)
 
 Similarly, to read we can map our object to `struct LumaState*`.
 
@@ -141,7 +141,7 @@ And again we see some special addr cases that are not present in edu implementat
 
 Another interesting function here is `vm_execute` that is called on `LumaState` object. Similar to many `vm` challenges there is a big switch case with handlers for executing vm instructions.
 
-![VM](vm.png)
+![VM](./images/vm.png)
 
 After some analysis we can see that each instruction is encoded in short int (2 bytes) with 4 nibbles in order: `opcode`, `register1`, `register2`, `constant`.
 
@@ -192,7 +192,7 @@ const opc_nop: u8 = 0xF;
 
 There is a function called `validate_signature` that is called before vm_execute
 
-![validate_signature](validate_signature.png)
+![validate_signature](./images/validate_signature.png)
 
 What this function does is split code into chunks of 64 bytes, performs sha512 on those chunks and xors those hashes into one `checksum` and finally compares the checksum with constant values.
 
@@ -228,7 +228,7 @@ fn validate_signature(data: &[u8]) -> bool {
 ### Win Function
 
 The author of this challenge was nice enough to add a win function:
-![luma_math_hacks](luma_math_hacks.png)
+![luma_math_hacks](./images/luma_math_hacks.png)
 
 ## Overview
 
@@ -253,7 +253,7 @@ make
 git clone https://github.com/maxerenberg/qemu-edu-driver module
 ```
 We will later need to build module with kernel in docker (author purposely left image so that linux will be 6.10.0-dirty) so you can not load driver if it does not match kernel name/build environment.
-![dirty](dirty.png)
+![dirty](./images/dirty.png)
 
 After you build module and kernel you can boot into it:
 on our system we had to add:
@@ -398,7 +398,7 @@ We managed to solve this by creating a block of bytes **(64 byte aligned)**, add
 
 Overall what this means is that we can layout our code as VM instruction block, copy of the same instruction block and then our "magic blob".
 
-![Blob](blob.png)
+![Blob](./images/blob.png)
 
 ## VM Exploitation
 
@@ -556,7 +556,7 @@ void exploit()
 And in the end we transfered out driver and cli tool and we got the flag ```TFCCTF{7h4nk_y0u_c4d37_y0u_w0n_7h3_3mu_w4r_92u83cj545d}```
 
 
-![Flag](flag.png)
+![Flag](./images/flag.png)
 
 ## Post Mortem
 Thanks TFC for awesome challenge for another year. this challenge involved a four members team of CyberHero, and multiple hours of pain. We would love to see more challenges like these in next CTF.
@@ -564,4 +564,4 @@ Thanks TFC for awesome challenge for another year. this challenge involved a fou
 
 Unfortunately this time we finished fourth. Altrough we did all rev/pwn/crypto/forensics (rip misc)
 
-![challenges](challenges.png)
+![challenges](./images/challenges.png)
