@@ -156,33 +156,33 @@ And we can map opcodes like this:
 ```rust
 //exit
 const opc_ret: u8 = 0;
-//r1 = firmware[r2]
+//reg[op1] = firmware[reg[op2]]
 const opc_load: u8 = 1;
-//firmware[r2] = r1
+//firmware[reg[op2]] = reg[op1]
 const opc_store: u8 = 2;
-//r1 = r2 + r1
+//reg[op1] = reg[op2] + reg[op1]
 const opc_add: u8 = 3;
-//r1 = r2 - r1
+//reg[op1] = reg[op2] - reg[op1]
 const opc_sub: u8 = 4;
-//r1 = r2 & r1
+//reg[op1] = reg[op2] & reg[op1]
 const opc_and: u8 = 5;
-//r1 = r2 | r1
+//reg[op1] = reg[op2] | reg[op1]
 const opc_or: u8 = 6;
-//r1 = r2 ^ r1
+//reg[op1] = reg[op2] ^ reg[op1]
 const opc_xor: u8 = 7;
-//pc = r1
+//pc = reg[op1]
 const opc_jmp: u8 = 8;
-//if r2 != 0 => pc = r1
+//if reg[op2] != 0 => pc = reg[op1]
 const opc_ceq: u8 = 9;
-//if r2 == 0 => pc = r1
+//if reg[op2] == 0 => pc = reg[op1]
 const opc_cne: u8 = 0xA;
-//r1 = r2 << const
+//reg[op1] = reg[op2] << const
 const opc_shl: u8 = 0xB;
-//r1 = r2 >> const
+//reg[op1] = reg[op2] >> const
 const opc_shr: u8 = 0xC;
-//r1 = r1 + 1
+//reg[op1] = reg[op1] + 1
 const opc_inc: u8 = 0xD;
-//r1 = r1 - 1
+//reg[op1] = reg[op1] - 1
 const opc_dec: u8 = 0xE;
 //nop
 const opc_nop: u8 = 0xF;
@@ -439,7 +439,7 @@ opc_ret
 we had to set register `r1` to our chosen `ret` instruction,
 `r3` to the win function address (generated from the leaked function) and `r0` and `r2` to stack offsets.
 
-Full code can be found at: [exploit](./exploit/edu-cli.c)
+Full code can be found at: [exploit](https://github.com/CyberHeroRS/writeups/tree/main/TFC/lumapci/exploit)
 
 ```c
 #include <fcntl.h>
