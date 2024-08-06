@@ -13,7 +13,7 @@ Files: [lumapci.zip](./lumapci.zip)
 
 ![File structure](./images/file_structure.png)
 
-From the provided docker file and entrypoint script, we can see that our docker runs the linux kernel and file system compiled by `qemu_builder` profile in `Challenge.dockerfile` with precompiled qemu binary. The flag is stored in docker's file system. This would mean this challenge requires us to do QEMU escape.
+From the provided docker file and entrypoint script, we can see that our docker runs the Linux kernel and file system compiled by `qemu_builder` profile in `Challenge.dockerfile` with precompiled qemu binary. The flag is stored in docker's file system. This would mean this challenge requires us to do QEMU escape.
 
 ![Dockerfile](./images/docker.png)
 ![entrypoint.sh](./images/entrypoint.png)
@@ -110,9 +110,9 @@ static uint64_t edu_mmio_read(void *opaque, hwaddr addr, unsigned size)
 
 We can see that that the luma implementation has much less addr cases `0x50-0xcf`, `0x120` and `0x140`.
 
-* `0x50-0xcf` Is reading registers
-* `0x120` is reading 8 bytes from firmware write pointer
-* `0x140` is validating signature
+- `0x50-0xcf` Is reading registers
+- `0x120` is reading 8 bytes from firmware write pointer
+- `0x140` is validating signature
 
 We also have this object at variable `rax` that in edu implementation is called `EduState`.
 
@@ -131,11 +131,11 @@ Similarly, to read we can map our object to `struct LumaState*`.
 
 And again we see some special addr cases that are not present in edu implementation: `0x50-0xcf`, `0xd8-0x117`, `0x120`, `0x128` and `0x138`.
 
-* `0x50-0xcf` is setting registers
-* `0xd8-0x117` is writing 8 bytes into firmware write pointer
-* `0x120` is setting firmware write pointer
-* `0x128` is validating signature and executing vm
-* `0x138` is reseting firmware state and setting its length
+- `0x50-0xcf` is setting registers
+- `0xd8-0x117` is writing 8 bytes into firmware write pointer
+- `0x120` is setting firmware write pointer
+- `0x128` is validating signature and executing vm
+- `0x138` is resetting firmware state and setting its length
 
 ## VM
 
@@ -238,32 +238,37 @@ To reiterate, we need to:
 - Bypass `validate_signature`
 - Create VM code to exploit luma_device
 
-## Communicating with qemu
+## Interacting with `luma`
 
-Searching online we found driver for edu device that you can use this as a base (https://github.com/maxerenberg/qemu-edu-driver).
+Searching online, we found a driver (https://github.com/maxerenberg/qemu-edu-driver) for the edu device, which we used as a starting point.
 
-We had to modified PCI_DEVICE_ID to our new id 1337. We had to remove irq_handler because it was crashing our linux kernel. Additionally we wrote read/write that used 8byte readq/writeq instead of readl/writel that driver used because device only suppors 8 byte read/writes.
+We had to modify `PCI_DEVICE_ID` to our new id 1337. We had to remove `irq_handler` because it was crashing the kernel. Additionally, we wrote read/write that used 8-byte `readq`/`writeq` instead of `readl`/`writel` that the original driver used, because the device only supports 8-byte read/writes.
 
-To build driver we had to clone linux
-```
+To build the driver, we had to clone Linux:
+
+```bash
 git clone --depth=1 --branch=v6.10 https://github.com/torvalds/linux.git linux
 cd linux
 make defconfig
 make
 git clone https://github.com/maxerenberg/qemu-edu-driver module
 ```
-We will later need to build module with kernel in docker (author purposely left image so that linux will be 6.10.0-dirty) so you can not load driver if it does not match kernel name/build environment.
+
+We will later need to build the module with the kernel from within the Docker container.  
+The author purposefully left this image, so that Linux would be 6.10.0-dirty and that you wouldn't be able to load drivers that do not match this exact kernel name/build environment:  
 ![dirty](./images/dirty.png)
 
-After you build module and kernel you can boot into it:
-on our system we had to add:
+After you build the module and the kernel, you can boot into it.  
+On our system, we had to add:
+
 ```
 ./qemu-system-x86_64 \
     -L /usr/share/qemu/ \
 ```
 
 ### Doing everything in userland
-Fun fact that we learned after the competition ended by user @raindropbreeze from TFC discord is that writing driver was not necessary at all. Since we only did I/O operations on memory we could simply mmap pci memory and operate on it. This would save us couple of hours just rebuilding kernel and thinkering with the driver.
+
+A fun fact we learned after the competition ended from @raindropbreeze (TFC Discord), is that writing the kernel driver was not even necessary. Since we only performed I/O operations on memory, we could have simply `mmap`ed the pci memory and operated on it. This would have saved us a couple of hours:
 
 ```c
 #include <stdio.h>
@@ -327,7 +332,7 @@ static int validate_sig() {
 
 int main() {
     init();
-    
+
     printf("%d\n", validate_sig());
 
 
@@ -335,16 +340,15 @@ int main() {
 }
 ```
 
-
-## Bypassing validate_signature
+## Bypassing `validate_signature`
 
 This obstacle is what got most teams stuck.
 
-### Creating valid signature
+### Creating a valid signature
 
-Since `checksum` was generated by xoring multiple sha512 hashes, what we could do is generate a large number of random hashes and try to find a combination of hashes such that when xored, we get the target checksum.
+Since `checksum` was generated by xoring multiple sha512 hashes, what we could do is generate a large number of random hashes and try to find a combination of hashes such that when xored together, we get the target checksum.
 
-We could achieve this by thinking of sha512 as polynome of order 64 and try to solve this linear equation to get hashes that when xored together give us the required checksum.
+We could achieve this by thinking of sha512 as a polynomial of order 64 and try to solve this linear equation to get hashes that when xored together give us the required checksum.
 
 We did this by creating a matrix of random hashes and used SageMath's `solve_right` function to solve the linear equation.
 
@@ -396,41 +400,44 @@ Now that we have a valid "magic blob" of bytes that passes `validate_signature`,
 
 We managed to solve this by creating a block of bytes **(64 byte aligned)**, adding our exploit instructions there and then duplicating it. What this means is that both blocks would have the same hash, resulting in a 0 after they are xored together and ultimately not affecting the checksum at all.
 
-Overall what this means is that we can layout our code as VM instruction block, copy of the same instruction block and then our "magic blob".
+Overall what this means, is that we can layout our code as a VM instruction block, a copy of the same instruction block and then our "magic blob".
 
 ![Blob](./images/blob.png)
 
 ## VM Exploitation
 
-Finally we get to the PWN part of this challenge.
-If we check our analysis of `vm_execute`, we can see that we have arbitrary read and arbitrary write from our copy of `LumaState.firmware` bytes on stack. This means that we can read and modify the return pointer of `vm_execute` and redirect it to our win function `luma_math_hacks`.
+Finally we get to the PWN part of this challenge.  
+If we check our analysis of `vm_execute`, we can see that we have arbitrary read and arbitrary write from our copy of `LumaState.firmware` bytes on stack. This means that we can read and modify the return pointer of `vm_execute` and redirect it to the win function `luma_math_hacks`.
 
 ### Exploit
 
-We created 2 vm programs
-First shellcode is  
+We created 2 vm programs.
+
+First shellcode is:
+
 ```
 opc_load r1, r0
 opc_ret
 ```
-we used 
-`pciwrite(0x50, 0x100000 + 0x28)` we set register 0 to return pointer offset
-and called pciwrite(0x128, 1); to execute vm.
 
-Next we read register1 using pciread(0x58); to get return pointer leak.
+we used
+`pciwrite(0x50, 0x100000 + 0x28)` to set `r0` to return pointer offset
+and called `pciwrite(0x128, 1)` to execute vm.
 
-next vm program is to set return pointer to some ret instruction to allign stack and next rop is to win function
+Next, we read `r1` using `pciread(0x58)` to get return pointer leak.
+
+The next vm program is to set the return pointer to some `ret` instruction to align the stack and the following address for ROP is the win function (`luma_math_hacks`).
+
 ```
 opc_store r1, r0
 opc_store r3, r2
 opc_ret
 ```
-we just had to store register r1 to our chosen ret instruction and 
-r3 to win function addres generated from leaked function.
-And stack offsets to registers r0 and r2.
+
+we had to set register `r1` to our chosen `ret` instruction,
+`r3` to the win function address (generated from the leaked function) and `r0` and `r2` to stack offsets.
 
 Full code can be found at: [exploit](./exploit/edu-cli.c)
-
 
 ```c
 #include <fcntl.h>
@@ -553,15 +560,14 @@ void exploit()
 }
 ```
 
-And in the end we transfered out driver and cli tool and we got the flag ```TFCCTF{7h4nk_y0u_c4d37_y0u_w0n_7h3_3mu_w4r_92u83cj545d}```
-
+In the end, we transferred our driver and cli tool and got the flag `TFCCTF{7h4nk_y0u_c4d37_y0u_w0n_7h3_3mu_w4r_92u83cj545d}`
 
 ![Flag](./images/flag.png)
 
-## Post Mortem
-Thanks TFC for awesome challenge for another year. this challenge involved a four members team of CyberHero, and multiple hours of pain. We would love to see more challenges like these in next CTF.
+## Final Thoughts
 
+This challenge involved four members of our team and we are looking forward to seeing more of them like this in the next CTF. Thanks to TFC for another set of awesome challenges this year!
 
-Unfortunately this time we finished fourth. Altrough we did all rev/pwn/crypto/forensics (rip misc)
+Unfortunately, this time we finished fourth. Although we solved all rev/pwn/crypto/forensics challenges (rip misc).
 
 ![challenges](./images/challenges.png)
